@@ -1,5 +1,3 @@
-I'll break down this code into understandable sections for your presentation.
-
 # UPI QR Code Generator - Code Breakdown
 
 ## 1. Structure Overview
