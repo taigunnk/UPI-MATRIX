@@ -1,0 +1,772 @@
+<html></html>
+<head>
+  <base href="http://example.com/">
+  <title>UPI QR Code Generator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Audiowide&display=swap');
+
+    :root {
+      --primary: #00ff00; /* Matrix Green */
+      --secondary: #008000; /* Darker Green */
+      --dark: #001400; /* Very Dark Green */
+      --neon: #39ff14; /* Neon Green */
+      --accent: #32cd32; /* Lime Green */
+      --background-gradient: linear-gradient(135deg, #001400, #003200); /* Dark Green Gradient */
+      --transition-duration: 0.5s;
+      --highlight: #50C878; /* Emerald Green */
+      --shadow: rgba(0, 255, 0, 0.4); /* Green Shadow */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background: var(--background-gradient);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+      perspective: 2000px; /* Enhanced perspective for better 3D effects */
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 25% 25%, rgba(0, 255, 140, 0.2) 0%, transparent 60%),
+        radial-gradient(circle at 75% 75%, rgba(20, 255, 133, 0.2) 0%, transparent 60%),
+        radial-gradient(circle at 50% 50%, rgba(0, 207, 115, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+      opacity: 0.15;
+      z-index: -2;
+    }
+
+    /* Add Matrix rain canvas */
+    #matrix-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -3;
+    }
+
+    .container {
+      min-height: 600px; 
+      display: flex;
+      flex-direction: column;
+      gap: 30px; /* Add consistent spacing */
+      justify-content: flex-start; /* Start from top */
+      padding: 30px; /* Decreased from 40px */
+      background: 
+        linear-gradient(rgba(0,20,0,0.95), rgba(0,20,0,0.95));
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      border-radius: 30px;
+      text-align: center;
+      max-width: 600px; /* Decreased from 800px */
+      width: 85%; /* Slightly reduced from 90% */
+      position: relative;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 60px rgba(0, 255, 0, 0.3);
+      transform: rotateX(10deg) rotateY(5deg); /* Increased 3D rotation */
+      transition: transform var(--transition-duration) ease;
+    }
+
+    .container:hover {
+      transform: rotateX(5deg) rotateY(0deg) translateZ(20px); /* Enhance container hover effect */
+    }
+
+    .input-group {
+      flex: 0 0 auto;
+      width: 100%;
+      margin-bottom: 10px; /* Reduced to leave more space for QR code */
+      display: flex;
+      flex-direction: column;
+      gap: 15px; /* Add gap between elements */
+    }
+
+    .input-field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-field label {
+      margin-bottom: 5px;
+      color: var(--highlight);
+      font-size: 0.9em;
+    }
+
+    input {
+      padding: 15px 20px; /* Decreased from 20px 25px */
+      background: rgba(0, 255, 0, 0.1);
+      border: 2px solid var(--primary);
+      border-radius: 15px;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.9em; /* Slightly smaller font */
+      transition: all 0.4s ease;
+      transform: translateZ(0);
+    }
+
+    input::placeholder {
+      color: rgba(255,255,255,0.7);
+    }
+
+    input:focus {
+      outline: none;
+      transform: scale(1.05);
+      box-shadow: 0 0 25px var(--primary);
+      background: rgba(0, 255, 0, 0.2);
+    }
+
+    button {
+      grid-column: 1 / -1;
+      padding: 15px 40px; /* Decreased from 20px 50px */
+      border: 3px solid var(--primary);
+      border-radius: 15px;
+      background: rgba(0, 255, 0, 0.15);
+      color: var(--primary);
+      font-family: 'Audiowide', 'Orbitron', sans-serif;
+      font-size: 1.1em; /* Decreased from 1.3em */
+      cursor: pointer;
+      transition: all 0.4s ease;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: var(--primary);
+      color: var(--dark);
+      box-shadow: 0 0 40px rgba(0, 255, 0, 0.6);
+      transform: translateY(-5px) scale(1.05);
+    }
+
+    #qrcode {
+      margin: auto auto 30px auto; /* Push to bottom center */
+      margin-bottom: 20px;
+      min-height: 200px;
+      width: 200px;
+      transform-style: preserve-3d;
+      transform: translateY(20px) translateZ(30px); /* Added Z translation for 3D depth */
+      position: relative;
+      background: white;
+      padding: 10px;
+      border-radius: 15px;
+      box-shadow: 
+        0 0 20px rgba(0, 255, 0, 0.2),
+        0 10px 20px rgba(0, 0, 0, 0.3);
+      width: 200px; /* Decreased from 256px */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.4s ease;
+      opacity: 0;
+      transform: translateY(0) translateZ(30px) rotateX(-5deg);
+      transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      padding: 20px;
+      border-radius: 15px;
+    }
+
+    #qrcode.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #qrcode::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 2px solid var(--primary);
+      border-radius: 15px;
+      animation: qrLoading 2s linear infinite;
+      opacity: 0.5;
+    }
+
+    @keyframes qrLoading {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .corner {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--primary);
+      opacity: 0.8;
+      background: 
+        linear-gradient(rgba(0,20,0,0.7), rgba(0,20,0,0.7));
+      border-radius: 5px;
+    }
+
+    .corner-tl { top: -10px; left: -10px; border-right: none; border-bottom: none; }
+    .corner-tr { top: -10px; right: -10px; border-left: none; border-bottom: none; }
+    .corner-bl { bottom: -10px; left: -10px; border-right: none; border-top: none; }
+    .corner-br { bottom: -10px; right: -10px; border-left: none; border-top: none; }
+
+    .scanline {
+      position: absolute;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      filter: blur(2px);
+      animation: scanline 3s linear infinite;
+      opacity: 0.6;
+      top: 0;
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+
+    .pulse-circle {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border: 2px solid var(--secondary);
+      border-radius: 50%;
+      top: -100px;
+      left: -100px;
+      animation: pulse 10s infinite;
+      opacity: 0.2;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 0.2;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0.2;
+      }
+    }
+
+    .floating-squares {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: var(--accent);
+      opacity: 0.5;
+      animation: float 6s infinite ease-in-out;
+      border-radius: 4px;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0.5;
+      }
+      50% {
+        transform: translateY(-50px) rotate(180deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(0) rotate(360deg);
+        opacity: 0.5;
+      }
+    }
+
+    .floating-squares:nth-child(1) { top: 10%; left: 20%; animation-delay: 0s; }
+    .floating-squares:nth-child(2) { top: 30%; left: 70%; animation-delay: 1s; }
+    .floating-squares:nth-child(3) { top: 60%; left: 40%; animation-delay: 2s; }
+    .floating-squares:nth-child(4) { top: 80%; left: 80%; animation-delay: 3s; }
+    .floating-squares:nth-child(5) { top: 50%; left: 10%; animation-delay: 4s; }
+    .floating-squares:nth-child(6) { top: 20%; left: 50%; animation-delay: 5s; }
+    .floating-squares:nth-child(7) { top: 70%; left: 30%; animation-delay: 6s; }
+    .floating-squares:nth-child(8) { top: 40%; left: 90%; animation-delay: 7s; }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+        min-height: 500px;
+      }
+      
+      input {
+        padding: 12px 15px;
+      }
+      
+      #qrcode {
+        width: 180px;
+        min-height: 180px;
+      }
+    }
+
+    #qrcode img {
+      filter: none;
+    }
+
+    /* Cool Typing Effect */
+    .typing-effect {
+      color: var(--primary);
+      font-family: 'Orbitron', monospace;
+      font-size: 0.8em;
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      overflow: hidden;
+      white-space: nowrap;
+      animation: typing 2s steps(14), blink 0.5s step-end infinite alternate;
+      border-right: 2px solid var(--primary);
+    }
+
+    @keyframes typing {
+      from { width: 0 }
+      to { width: 8.5em }
+    }
+
+    @keyframes blink {
+      50% { border-color: transparent }
+    }
+
+    /* Power Button */
+    .power-button {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 15px;
+      height: 15px;
+      border: 2px solid var(--primary);
+      border-radius: 50%;
+      cursor: pointer;
+      animation: pulse 2s infinite;
+    }
+
+    .power-button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background: var(--primary);
+      border-radius: 50%;
+    }
+
+    /* Cyber Dots */
+    .cyber-dots {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+
+    .cyber-dots::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(var(--primary) 1px, transparent 1px);
+      background-size: 20px 20px;
+      opacity: 0.1;
+    }
+
+    /* Add hover effects for inputs */
+    input:hover {
+      transform: translateX(5px);
+      box-shadow: -5px 0 15px var(--primary);
+    }
+
+    /* Add success animation for QR generation */
+    @keyframes success-pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    /* New and enhanced styles */
+    .content-wrapper {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 30px;
+      width: 100%;
+      padding: 20px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      margin-top: 5px;
+    }
+
+    .icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--primary);
+      font-style: normal;
+    }
+
+    input {
+      padding-left: 35px;
+      background: rgba(0, 255, 0, 0.05);
+      border: 1px solid var(--primary);
+      transition: all 0.3s ease;
+    }
+
+    .focus-border {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--primary);
+      transition: width 0.3s ease;
+    }
+
+    input:focus ~ .focus-border {
+      width: 100%;
+    }
+
+    .required {
+      color: var(--primary);
+      margin-left: 4px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .main-btn, .reset-btn {
+      position: relative;
+      overflow: hidden;
+      padding: 12px 30px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .main-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--primary);
+      opacity: 0.2;
+      transition: all 0.3s ease;
+    }
+
+    .main-btn:hover::before {
+      opacity: 0.4;
+    }
+
+    .btn-glitch {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--primary);
+      filter: blur(20px);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .main-btn:hover .btn-glitch {
+      opacity: 0.3;
+    }
+
+    .qr-wrapper {
+      position: relative;
+      padding: 20px;
+      background: rgba(0, 255, 0, 0.05);
+      border-radius: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .qr-frame {
+      position: relative;
+      padding: 20px;
+      border: 2px solid var(--primary);
+      border-radius: 10px;
+    }
+
+    .scan-animation {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      animation: scan 2s linear infinite;
+    }
+
+    @keyframes scan {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(100%); }
+    }
+
+    .status-bar {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      display: flex;
+      gap: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .status-label {
+      font-size: 0.7em;
+      color: var(--primary);
+      opacity: 0.7;
+    }
+
+    .status-value {
+      font-size: 0.8em;
+      color: var(--primary);
+    }
+
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .hex-border {
+      position: absolute;
+      inset: 0;
+      background: 
+        linear-gradient(60deg, transparent 0%, var(--primary) 1%, transparent 2%) 0 0,
+        linear-gradient(-60deg, transparent 0%, var(--primary) 1%, transparent 2%) 0 0;
+      background-size: 20px 20px;
+      opacity: 0.1;
+      pointer-events: none;
+    }
+
+    /* Add glitch effect */
+    .glitch-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 255, 0, 0.1);
+      pointer-events: none;
+      animation: glitch 5s infinite;
+      opacity: 0;
+    }
+
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      1% { transform: translate(-2px, 2px); opacity: 0.5; }
+      2% { transform: translate(2px, -2px); opacity: 0.5; }
+      3% { transform: translate(0); opacity: 0; }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .content-wrapper {
+        grid-template-columns: 1fr;
+      }
+      
+      .qr-column {
+        order: -1;
+      }
+    }
+
+    .qr-scanner-line {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      animation: scanning 2s linear infinite;
+    }
+
+    @keyframes scanning {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <canvas id="matrix-bg"></canvas>
+  <div class="pulse-circle"></div>
+
+  <div class="container">
+    <div class="scanline"></div>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    
+    <h1>UPI QR Code Generator</h1>
+    <div class="input-group">
+      <div class="input-field">
+        <label for="upiId">UPI ID</label>
+        <input type="text" id="upiId" placeholder="Enter UPI ID (e.g., name@bank)" />
+      </div>
+      <div class="input-field">
+        <label for="recipientName">Recipient Name</label>
+        <input type="text" id="recipientName" placeholder="Recipient Name" />
+      </div>
+      <div class="input-field">
+        <label for="amount">Amount (₹)</label>
+        <input type="number" id="amount" placeholder="Amount (₹)" step="0.01" min="0" />
+      </div>
+      <div class="input-field">
+        <label for="message">Payment Message (Optional)</label>
+        <input type="text" id="message" placeholder="Payment Message (Optional)" />
+      </div>
+      <button onclick="generateQRCode()" style="margin-top: auto; align-self: center; min-width: 200px;">Generate QR Code</button>
+    </div>
+    <div id="qrcode"></div>
+  </div>
+
+  <script>
+    function validateUPIId(upiId) {
+      // UPI ID format: username@bankname or mobilenumber@bankname
+      const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/;
+      const commonUPIHandles = ['okaxis', 'okhdfcbank', 'okicici', 'oksbi', 'ybl', 'paytm', 'apl', 'gpay'];
+      
+      // Basic format check
+      if (!upiRegex.test(upiId)) {
+        return false;
+      }
+      
+      // Check if the bank handle is valid
+      const handle = upiId.split('@')[1].toLowerCase();
+      return commonUPIHandles.some(validHandle => handle.includes(validHandle));
+    }
+
+    function generateQRCode() {
+      const upiId = document.getElementById('upiId').value.trim();
+      const recipientName = document.getElementById('recipientName').value.trim();
+      const amount = document.getElementById('amount').value.trim();
+      const message = document.getElementById('message').value.trim();
+      
+      const qrcodeContainer = document.getElementById('qrcode');
+      qrcodeContainer.innerHTML = "";
+      qrcodeContainer.classList.remove('show');
+      
+      if(!upiId || !recipientName) {
+        alert("Please enter UPI ID and Recipient Name");
+        return;
+      }
+      
+      if (!validateUPIId(upiId)) {
+        alert("Invalid UPI ID format! Please enter a valid UPI ID (e.g., username@bankname or mobilenumber@bankname)");
+        return;
+      }
+      
+      if(amount && (isNaN(amount) || amount < 0)) {
+        alert("Please enter a valid amount");
+        return;
+      }
+
+      // Simplified UPI URI format that works with all UPI apps
+      const upiURL = `upi://pay?pa=${upiId}&pn=${recipientName}${amount ? `&am=${amount}` : ''}&cu=INR${message ? `&tn=${message}` : ''}`;
+      
+      try {
+        new QRCode(qrcodeContainer, {
+          text: upiURL,
+          width: 200,
+          height: 200,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        qrcodeContainer.classList.add('show');
+        
+      } catch(error) {
+        console.error("QR Code generation failed:", error);
+        alert("Failed to generate QR Code. Please try again.");
+      }
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById('matrix-bg');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+    const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const nums = '0123456789';
+    const alphabet = katakana + latin + nums;
+
+    const fontSize = 16;
+    const columns = canvas.width/fontSize;
+
+    const rainDrops = Array(Math.floor(columns)).fill(1);
+
+    function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#0F0';
+        ctx.font = fontSize + 'px monospace';
+
+        for(let i = 0; i < rainDrops.length; i++) {
+            const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+            ctx.fillText(text, i*fontSize, rainDrops[i]*fontSize);
+            
+            if(rainDrops[i]*fontSize > canvas.height && Math.random() > 0.975){
+                rainDrops[i] = 0;
+            }
+            rainDrops[i]++;
+        }
+    }
+
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+
+    setInterval(draw, 50);
+  </script>
+</body>
+</html>
+<style>
+  /* Adjust QR code canvas size */
+  #qrcode {
+    max-width: 200px;
+    max-height: 200px;
+    margin: 0 auto;
+  }
+
+  #qrcode canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+</style>
+
