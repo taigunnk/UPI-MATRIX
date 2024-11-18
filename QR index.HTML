@@ -614,6 +614,7 @@
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
   <canvas id="matrix-bg"></canvas>
@@ -630,8 +631,7 @@
     <div class="input-group">
       <div class="input-field">
         <label for="upiId">UPI ID</label>
-        <input type="text" id="upiId" placeholder="Enter UPI ID (e.g., name@bank)" />
-      </div>
+        <input type="text" id="upiId" placeholder="Enter UPI ID (e.g., name@bank) or Phone Number (e.g., 1234567890@bank)" />      </div>
       <div class="input-field">
         <label for="recipientName">Recipient Name</label>
         <input type="text" id="recipientName" placeholder="Recipient Name" />
@@ -651,11 +651,18 @@
 
   <script>
     function validateUPIId(upiId) {
-      // UPI ID format: username@bankname or mobilenumber@bankname
+      // UPI ID format: username@bankname or mobilenumber@bankname 
       const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/;
-      const commonUPIHandles = ['okaxis', 'okhdfcbank', 'okicici', 'oksbi', 'ybl', 'paytm', 'apl', 'gpay'];
+      const phoneRegex = /^\d{10}@[a-zA-Z]{3,}$/;  // For phone numbers
+      const commonUPIHandles = ['okaxis', 'okhdfcbank', 'okicici', 'oksbi', 'hdfc', 'sbi', 'ybl', 'paytm', 'apl', 'gpay', 'axl', 'ibl', 'ptyes'];
       
-      // Basic format check
+      // Check if it's a phone number format
+      if (phoneRegex.test(upiId)) {
+        const handle = upiId.split('@')[1].toLowerCase();
+        return commonUPIHandles.some(validHandle => handle.includes(validHandle));
+      }
+      
+      // Check regular UPI ID format
       if (!upiRegex.test(upiId)) {
         return false;
       }
@@ -663,6 +670,20 @@
       // Check if the bank handle is valid
       const handle = upiId.split('@')[1].toLowerCase();
       return commonUPIHandles.some(validHandle => handle.includes(validHandle));
+    }
+
+    // Add new function for phone number detection
+    function detectAndFormatUPI() {
+      const upiInput = document.getElementById('upiId');
+      let value = upiInput.value.trim();
+      
+      // Check if input is a 10-digit phone number
+      const phoneRegex = /^\d{10}$/;
+      if (phoneRegex.test(value)) {
+        // Auto-append @upi handle
+        value = value + '@okicici';
+        upiInput.value = value;
+      }
     }
 
     function generateQRCode() {
@@ -754,6 +775,36 @@
 
     setInterval(draw, 50);
   </script>
+
+  <script>
+    // Add Three.js setup after the matrix rain script
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('matrix-bg') });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+    const cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
+
+    camera.position.z = 5;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+  </script>
 </body>
 </html>
 <style>
@@ -769,4 +820,3 @@
     height: auto !important;
   }
 </style>
-
