@@ -686,6 +686,29 @@
       }
     }
 
+    function speak(text) {
+      const speech = new SpeechSynthesisUtterance();
+      speech.text = text;
+      speech.volume = 1; // Full volume
+      speech.rate = 1.1; // Increase rate for a more confident tone
+      speech.pitch = 1; // Standard pitch to maintain natural tone
+
+      // Choose a Siri voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const siriVoice = voices.find(voice => /siri/i.test(voice.name)); // Selecting Siri voice by name
+      if (siriVoice) {
+        speech.voice = siriVoice;
+      } else {
+        // Fallback to the first English voice if Siri voice is not found
+        const defaultVoice = voices.find(voice => voice.lang.includes('en'));
+        if (defaultVoice) {
+          speech.voice = defaultVoice;
+        }
+      }
+
+      window.speechSynthesis.speak(speech);
+    }
+
     function generateQRCode() {
       const upiId = document.getElementById('upiId').value.trim();
       const recipientName = document.getElementById('recipientName').value.trim();
@@ -725,7 +748,7 @@
         });
         
         qrcodeContainer.classList.add('show');
-        
+        speak("QR code generation is successful."); // Announce success with a more confident voice
       } catch(error) {
         console.error("QR Code generation failed:", error);
         alert("Failed to generate QR Code. Please try again.");
@@ -740,7 +763,7 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+    const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベオォコソトノホモヨョロヲゴゾドボポヴッン';
     const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const nums = '0123456789';
     const alphabet = katakana + latin + nums;
