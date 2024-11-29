@@ -612,9 +612,53 @@
       0% { top: 0; }
       100% { top: 100%; }
     }
+
+    .holographic-effect {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        45deg,
+        transparent 0%,
+        rgba(0, 255, 0, 0.05) 50%,
+        transparent 100%
+      );
+      animation: holographic 3s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes holographic {
+      0% { transform: translateX(-100%) translateY(-100%); }
+      100% { transform: translateX(100%) translateY(100%); }
+    }
+
+    .status-display {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-family: 'Orbitron', sans-serif;
+      color: var(--primary);
+      text-transform: uppercase;
+      font-size: 0.8em;
+    }
+
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .status-value {
+      font-weight: bold;
+      text-shadow: 0 0 10px var(--primary);
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
   <canvas id="matrix-bg"></canvas>
@@ -638,7 +682,7 @@
       </div>
       <div class="input-field">
         <label for="amount">Amount (₹)</label>
-        <input type="number" id="amount" placeholder="Amount (₹)" step="0.01" min="0" />
+        <input type="number" id="amount" placeholder="Amount (₹)" step="100" min="0" />
       </div>
       <div class="input-field">
         <label for="message">Payment Message (Optional)</label>
@@ -654,7 +698,7 @@
       // UPI ID format: username@bankname or mobilenumber@bankname 
       const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/;
       const phoneRegex = /^\d{10}@[a-zA-Z]{3,}$/;  // For phone numbers
-      const commonUPIHandles = ['okaxis', 'okhdfcbank', 'okicici', 'oksbi', 'hdfc', 'sbi', 'ybl', 'paytm', 'apl', 'gpay', 'axl', 'ibl', 'ptyes'];
+      const commonUPIHandles = ['okaxis', 'okhdfcbank', 'okicici', 'oksbi', 'hdfc', 'sbi', 'ybl', 'paytm', 'apl', 'gpay', 'axl', 'ibl', 'ptyes' , 'phonepe' , 'ptaxis'];
       
       // Check if it's a phone number format
       if (phoneRegex.test(upiId)) {
@@ -686,28 +730,134 @@
       }
     }
 
+    let lastSpokenTime = 1; // Variable to track the last spoken time
+
     function speak(text) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+
       const speech = new SpeechSynthesisUtterance();
       speech.text = text;
-      speech.volume = 1; // Full volume
-      speech.rate = 1.1; // Increase rate for a more confident tone
-      speech.pitch = 1; // Standard pitch to maintain natural tone
+      speech.volume = 1;
+      speech.rate = 1.1;
+      speech.pitch = 1;
 
-      // Choose a Siri voice if available
+      // Choose a voice (you can specify a different voice name here)
       const voices = window.speechSynthesis.getVoices();
-      const siriVoice = voices.find(voice => /siri/i.test(voice.name)); // Selecting Siri voice by name
-      if (siriVoice) {
-        speech.voice = siriVoice;
-      } else {
-        // Fallback to the first English voice if Siri voice is not found
-        const defaultVoice = voices.find(voice => voice.lang.includes('en'));
-        if (defaultVoice) {
-          speech.voice = defaultVoice;
-        }
+      const preferredVoice = voices.find(voice => 
+        voice.name.includes('Google US English') // Change this to your preferred voice name
+      ) || voices.find(voice => voice.lang.includes('en'));
+
+      if (preferredVoice) {
+        speech.voice = preferredVoice;
       }
 
       window.speechSynthesis.speak(speech);
     }
+
+    // Add a function to initialize voices properly
+    function initVoices() {
+      return new Promise((resolve) => {
+        let voices = window.speechSynthesis.getVoices();
+        if (voices.length > 1) {
+          resolve(voices);
+        } else {
+          window.speechSynthesis.onvoiceschanged = () => {
+            voices = window.speechSynthesis.getVoices();
+            resolve(voices);
+          };
+        }
+      });
+    }
+
+    // Modified hover function for smoother experience
+    function initializeInputHoverSpeech() {
+      const inputMappings = {
+        'upiId': 'Please enter your UPI ID',
+        'recipientName': 'Please enter the recipient name',
+        'amount': 'Please enter the amount',
+        'message': 'You may enter an optional payment message'
+      };
+
+      // Add hover listeners to all input fields
+      Object.keys(inputMappings).forEach(inputId => {
+        const input = document.getElementById(inputId);
+        let hoverTimeout;
+        let hasSpoken = false; // Flag to track if speech has been triggered
+
+        input.addEventListener('mouseenter', () => {
+          // Only speak if the input field is empty
+          if (!input.value.trim()) {
+            // Add small delay to prevent accidental triggers
+            hoverTimeout = setTimeout(() => {
+              if (!hasSpoken) { // Check if speech has already been spoken
+                speak(inputMappings[inputId]);
+                hasSpoken = true; // Set flag to true after speaking
+              }
+            }, 300);
+          }
+        });
+
+        input.addEventListener('mouseleave', () => {
+          clearTimeout(hoverTimeout);
+          // Cancel any ongoing speech when mouse leaves
+          window.speechSynthesis.cancel();
+        });
+
+        // Reset the speaking flag when the input loses focus
+        input.addEventListener('blur', () => {
+          hasSpoken = false; // Reset speaking flag when input loses focus
+        });
+
+        // Special handling for amount field
+        if (inputId === 'amount') {
+          input.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            // Regex to check if the value contains only numbers and decimal point
+            const validNumberRegex = /^\d*\.?\d*$/;
+            
+            if (value) {
+              if (/[a-zA-Z]/.test(value)) {
+                speak("You entered letters. Please enter only numbers for the amount");
+                input.style.borderColor = 'red';
+              } else if (/[^0-9.]/.test(value)) {
+                speak("You entered special characters. Please enter only numbers for the amount");
+                input.style.borderColor = 'red';
+              } else if (!validNumberRegex.test(value) || value < 0 || isNaN(value)) {
+                speak("You entered the wrong amount. Please enter a valid amount");
+                input.style.borderColor = 'red';
+              } else {
+                input.style.borderColor = ''; // Reset to default
+                return;
+              }
+              // Add shake animation for any error
+              input.style.animation = 'shake 0.5s';
+              setTimeout(() => {
+                input.style.animation = '';
+              }, 500);
+            }
+          });
+
+          // Add keypress event to prevent invalid characters
+          input.addEventListener('keypress', (e) => {
+            // Allow only numbers, decimal point, and control keys
+            if (/[a-zA-Z]/.test(e.key)) {
+              e.preventDefault();
+              speak("Please enter only numbers, not letters");
+            } else if (!/[\d.]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault();
+              speak("Please enter only numbers, not special characters");
+            }
+          });
+        }
+      });
+    }
+
+    // Initialize everything when the document loads
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initVoices();
+      initializeInputHoverSpeech();
+    });
 
     function generateQRCode() {
       const upiId = document.getElementById('upiId').value.trim();
@@ -748,10 +898,10 @@
         });
         
         qrcodeContainer.classList.add('show');
-        speak("QR code generation is successful."); // Announce success with a more confident voice
+        speak("QR code generation is successful"); // Replace alert with speech
       } catch(error) {
         console.error("QR Code generation failed:", error);
-        alert("Failed to generate QR Code. Please try again.");
+        speak("Failed to generate QR Code. Please try again."); // Also replace error alert with speech
       }
     }
   </script>
@@ -763,10 +913,10 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベオォコソトノホモヨョロヲゴゾドボポヴッン';
+    const katakana = 'アァカタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベオォコソトノホモヨョロヲゴゾドボポヴッン';
+    const nums = '0101010101010101010101010101010101010101101010101010101010101010101010';
     const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const nums = '0123456789';
-    const alphabet = katakana + latin + nums;
+    const alphabet = katakana + nums + latin;
 
     const fontSize = 16;
     const columns = canvas.width/fontSize;
@@ -828,6 +978,231 @@
       camera.updateProjectionMatrix();
     });
   </script>
+
+  <script>
+    function initVoiceCommands() {
+      const recognition = new webkitSpeechRecognition();
+      recognition.continuous = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
+        
+        if (command.includes('generate') || command.includes('create')) {
+          generateQRCode();
+        } else if (command.includes('reset') || command.includes('clear')) {
+          // Clear all fields
+          document.querySelectorAll('input').forEach(input => input.value = '');
+        }
+      };
+
+      recognition.start();
+    }
+  </script>
+
+  <script>
+    async function authenticateUser() {
+      try {
+        const credential = await navigator.credentials.get({
+          publicKey: {
+            challenge: new Uint8Array(32),
+            rpId: window.location.hostname,
+            allowCredentials: [],
+            userVerification: "preferred"
+          }
+        });
+        return true;
+      } catch (e) {
+        console.error('Authentication failed:', e);
+        return false;
+      }
+    }
+  </script>
+
+  <script>
+    function simulatePaymentVerification() {
+      const steps = [
+        'Initializing Secure Channel...',
+        'Verifying UPI ID...',
+        'Encrypting Transaction Data...',
+        'Generating Secure QR Code...',
+        'Complete!'
+      ];
+let lastSpokenTime = 0; // Variable to track the last spoken time
+
+function speakText(text) {
+  const currentTime = Date.now();
+
+  // Only speak if 2 minutes have passed since the last spoken time
+  if (currentTime - lastSpokenTime < 120000) {
+    return;
+  }
+
+  lastSpokenTime = currentTime;
+
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.volume = 1;
+  utterance.rate = 1.1;speakText("Payment verified successfully");speakText("Payment verified successfully");
+  utterance.pitch = 1;
+
+  // Prefer a female voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const preferredVoice = voices.find(voice => voice.lang.includes('en') && voice.name.includes('Female'));
+  if (preferredVoice) {
+    utterance.voice = preferredVoice;
+  }
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// Initialize input hover speech with delay
+function initializeInputHoverSpeech() {
+  const inputMappings = {
+    'upiId': 'Please enter your UPI ID or VPA ID',
+    'recipientName': 'Please enter the recipient name',
+    'amount': 'Please enter the amount',
+    'message': 'You may enter an optional payment message'
+  };
+
+  // Add hover listeners to all input fields
+  Object.keys(inputMappings).forEach(inputId => {
+    const input = document.getElementById(inputId);
+    let hoverTimeout;
+
+    input.addEventListener('mouseenter', () => {
+      // Only speak if the input field is empty
+      if (!input.value.trim()) {
+        // Add small delay to prevent accidental triggers
+        hoverTimeout = setTimeout(() => {
+          speak(inputMappings[inputId]);
+        }, 1);
+      }
+    });
+
+    input.addEventListener('mouseleave', () => {
+      clearTimeout(hoverTimeout);
+      // Cancel any ongoing speech when mouse leaves
+      window.speechSynthesis.cancel();
+    });
+
+    input.addEventListener('focus', () => {
+      // Check if speech is already ongoing to prevent repetition
+      if (Date.now() - lastSpokenTime >= 1) {
+        speak(inputMappings[inputId]);
+      }
+    });
+  });
+}
+      let i = 0;
+      const statusElement = document.createElement('div');
+      statusElement.className = 'verification-status';
+      
+      const interval = setInterval(() => {
+        if (i >= steps.length) {
+          clearInterval(interval);
+          return;
+        }
+        statusElement.textContent = steps[i++];
+      }, 800);
+    }
+  </script>
+
+  <script>
+    async function showARPreview() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      
+      // Create AR overlay
+      const arOverlay = document.createElement('div');
+      arOverlay.className = 'ar-overlay';
+      arOverlay.appendChild(video);
+      document.body.appendChild(arOverlay);
+    }
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeInputHoverSpeech();
+    });
+  </script>
+
+  <script>
+    // Add this function near your other JavaScript functions
+    let initialized = false;
+    
+    function initializeOnce() {
+      if (!initialized) {
+        initializeInputHoverSpeech();
+        initialized = true;
+      }
+    }
+
+    function initializeInputHoverSpeech() {
+      const inputMappings = {
+        'upiId': 'Please enter your UPI ID or VPA ID',
+        'recipientName': 'Please enter the recipient name',
+        'amount': 'Please enter the amount',
+        'message': 'You may enter an optional payment message'
+      };
+
+      // Add hover listeners to all input fields
+      Object.keys(inputMappings).forEach(inputId => {
+        const input = document.getElementById(inputId);
+        let hoverTimeout;
+
+        input.addEventListener('mouseenter', () => {
+          // Only speak if the input field is empty
+          if (!input.value.trim()) {
+            // Add small delay to prevent accidental triggers
+            hoverTimeout = setTimeout(() => {
+              speak(inputMappings[inputId]);
+            }, 300);
+          }
+        });
+
+        input.addEventListener('mouseleave', () => {
+          clearTimeout(hoverTimeout);
+          // Cancel any ongoing speech when mouse leaves
+          window.speechSynthesis.cancel();
+        });
+      });
+    }
+
+    // Modify your existing speak function to handle interruptions better
+    function speak(text) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+
+      const speech = new SpeechSynthesisUtterance();
+      speech.text = text;
+      speech.volume = 1;
+      speech.rate = 1.1;
+      speech.pitch = 1;
+
+      // Choose a voice (preferably female voice if available)
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.lang.includes('en') && voice.name.includes('Female')
+      ) || voices.find(voice => voice.lang.includes('en'));
+
+      if (preferredVoice) {
+        speech.voice = preferredVoice;
+      }
+
+      window.speechSynthesis.speak(speech);
+    }
+
+    // Add this to ensure voices are loaded
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = initializeOnce;
+    }
+
+    document.addEventListener('DOMContentLoaded', initializeOnce);
+  </script>
 </body>
 </html>
 <style>
@@ -841,5 +1216,11 @@
   #qrcode canvas {
     width: 100% !important;
     height: auto !important;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
   }
 </style>
