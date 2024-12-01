@@ -655,6 +655,32 @@
       font-weight: bold;
       text-shadow: 0 0 10px var(--primary);
     }
+
+    .input-field input.valid-upi {
+      border-color: var(--neon) !important;
+      box-shadow: 0 0 10px var(--neon);
+    }
+
+    .input-field input.invalid-upi {
+      border-color: #ff0000 !important;
+      box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+    }
+
+    .upi-feedback {
+      font-size: 0.8em;
+      margin-top: 5px;
+      color: var(--neon);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .upi-feedback.show {
+      opacity: 1;
+    }
+
+    .upi-feedback.error {
+      color: #ff0000;
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -675,7 +701,9 @@
     <div class="input-group">
       <div class="input-field">
         <label for="upiId">UPI ID</label>
-        <input type="text" id="upiId" placeholder="Enter UPI ID (e.g., name@bank) or Phone Number (e.g., 1234567890@bank)" />      </div>
+        <input type="text" id="upiId" placeholder="Enter UPI ID or Phone Number" oninput="validateUPIIdRealTime(this.value)">
+        <div id="upiIdFeedback" class="upi-feedback"></div>
+      </div>
       <div class="input-field">
         <label for="recipientName">Recipient Name</label>
         <input type="text" id="recipientName" placeholder="Recipient Name" />
@@ -736,22 +764,6 @@
       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
 
-      const speech = new SpeechSynthesisUtterance();
-      speech.text = text;
-      speech.volume = 1;
-      speech.rate = 1.1;
-      speech.pitch = 1;
-
-      // Choose a voice (you can specify a different voice name here)
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice => 
-        voice.name.includes('Google US English') // Change this to your preferred voice name
-      ) || voices.find(voice => voice.lang.includes('en'));
-
-      if (preferredVoice) {
-        speech.voice = preferredVoice;
-      }
-
       window.speechSynthesis.speak(speech);
     }
 
@@ -773,7 +785,7 @@
     // Modified hover function for smoother experience
     function initializeInputHoverSpeech() {
       const inputMappings = {
-        'upiId': 'Please enter your UPI ID',
+        'upiId': 'Please enter your UPI ID or phone number',
         'recipientName': 'Please enter the recipient name',
         'amount': 'Please enter the amount',
         'message': 'You may enter an optional payment message'
@@ -913,9 +925,9 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const katakana = 'アァカタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベオォコソトノホモヨョロヲゴゾドボポヴッン';
+    const katakana = '';
     const nums = '0101010101010101010101010101010101010101101010101010101010101010101010';
-    const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const latin = '';
     const alphabet = katakana + nums + latin;
 
     const fontSize = 16;
@@ -937,8 +949,13 @@
             if(rainDrops[i]*fontSize > canvas.height && Math.random() > 0.975){
                 rainDrops[i] = 0;
             }
-            rainDrops[i]++;
+            rainDrops[i] += 1;
         }
+    }
+
+    function matrixAnimation() {
+        draw();
+        requestAnimationFrame(matrixAnimation);
     }
 
     window.addEventListener('resize', () => {
@@ -946,7 +963,7 @@
         canvas.height = window.innerHeight;
     });
 
-    setInterval(draw, 50);
+    matrixAnimation();
   </script>
 
   <script>
@@ -1061,7 +1078,7 @@ function speakText(text) {
 // Initialize input hover speech with delay
 function initializeInputHoverSpeech() {
   const inputMappings = {
-    'upiId': 'Please enter your UPI ID or VPA ID',
+    'upiId': 'Please enter your UPI ID or phone number',
     'recipientName': 'Please enter the recipient name',
     'amount': 'Please enter the amount',
     'message': 'You may enter an optional payment message'
@@ -1143,7 +1160,7 @@ function initializeInputHoverSpeech() {
 
     function initializeInputHoverSpeech() {
       const inputMappings = {
-        'upiId': 'Please enter your UPI ID or VPA ID',
+        'upiId': 'Please enter your UPI ID or phone number',
         'recipientName': 'Please enter the recipient name',
         'amount': 'Please enter the amount',
         'message': 'You may enter an optional payment message'
@@ -1180,8 +1197,8 @@ function initializeInputHoverSpeech() {
       const speech = new SpeechSynthesisUtterance();
       speech.text = text;
       speech.volume = 1;
-      speech.rate = 1.1;
-      speech.pitch = 1;
+      speech.rate = 1;
+      speech.pitch = 1.1;
 
       // Choose a voice (preferably female voice if available)
       const voices = window.speechSynthesis.getVoices();
@@ -1224,3 +1241,134 @@ function initializeInputHoverSpeech() {
     75% { transform: translateX(5px); }
   }
 </style>
+
+<script>
+  const VALID_UPI_HANDLES = {
+    'okaxis': 'Axis Bank',
+    'okhdfcbank': 'HDFC Bank',
+    'okicici': 'ICICI Bank',
+    'oksbi': 'State Bank of India',
+    'hdfc': 'HDFC Bank',
+    'sbi': 'State Bank of India',
+    'ybl': 'Yes Bank',
+    'paytm': 'Paytm Payments Bank',
+    'apl': 'Amazon Pay',
+    'gpay': 'Google Pay',
+    'axl': 'Axis Bank',
+    'ibl': 'ICICI Bank',
+    'ptyes': 'Yes Bank',
+    'phonepe': 'PhonePe',
+    'ptaxis': 'Axis Bank'
+  };
+
+  function validateUPIIdRealTime(upiId) {
+    const input = document.getElementById('upiId');
+    const feedback = document.getElementById('upiIdFeedback');
+    
+    // Clear previous styling
+    input.classList.remove('valid-upi', 'invalid-upi');
+    feedback.classList.remove('show', 'error');
+    
+    if (!upiId) {
+      feedback.textContent = 'Please enter a UPI ID';
+      feedback.classList.add('show', 'error');
+      return false;
+    }
+
+    const [username, handle] = upiId.split('@');
+    
+    if (!handle) {
+      feedback.textContent = 'UPI ID must contain @ symbol';
+      feedback.classList.add('show', 'error');
+      input.classList.add('invalid-upi');
+      return false;
+    }
+
+    // Check username format
+    if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+      feedback.textContent = 'Username can only contain letters, numbers, dots, underscores, and hyphens';
+      feedback.classList.add('show', 'error');
+      input.classList.add('invalid-upi');
+      return false;
+    }
+
+    // Check if it's a phone number format
+    if (/^\d{10}$/.test(username)) {
+      const bankHandle = handle.toLowerCase();
+      const validBank = Object.keys(VALID_UPI_HANDLES).find(h => bankHandle.includes(h));
+      
+      if (validBank) {
+        feedback.textContent = `Valid UPI ID for ${VALID_UPI_HANDLES[validBank]}`;
+        feedback.classList.add('show');
+        input.classList.add('valid-upi');
+        return true;
+      }
+    }
+
+    // Check regular UPI ID format
+    const bankHandle = handle.toLowerCase();
+    const validBank = Object.keys(VALID_UPI_HANDLES).find(h => bankHandle.includes(h));
+    
+    if (!validBank) {
+      feedback.textContent = 'Invalid bank handle. Please use a registered UPI bank handle';
+      feedback.classList.add('show', 'error');
+      input.classList.add('invalid-upi');
+      return false;
+    }
+
+    feedback.textContent = `Valid UPI ID for ${VALID_UPI_HANDLES[validBank]}`;
+    feedback.classList.add('show');
+    input.classList.add('valid-upi');
+    return true;
+  }
+
+  function validateUPIId(upiId) {
+    return validateUPIIdRealTime(upiId);
+  }
+
+  async function generateQRCode() {
+    const upiId = document.getElementById('upiId').value.trim();
+    const recipientName = document.getElementById('recipientName').value.trim();
+    const amount = document.getElementById('amount').value.trim();
+    const message = document.getElementById('message').value.trim();
+    
+    const qrcodeContainer = document.getElementById('qrcode');
+    qrcodeContainer.innerHTML = "";
+    qrcodeContainer.classList.remove('show');
+    
+    if(!upiId || !recipientName) {
+      speak("Please enter UPI ID and Recipient Name");
+      return;
+    }
+    
+    if (!validateUPIId(upiId)) {
+      // The error message will be shown by the validateUPIId function
+      speak("Invalid UPI ID. Please try again");
+      return;
+    }
+    
+    if(amount && (isNaN(amount) || amount < 0)) {
+      speak("Please enter a valid amount");
+      return;
+    }
+
+    const upiURL = `upi://pay?pa=${upiId}&pn=${recipientName}${amount ? `&am=${amount}` : ''}&cu=INR${message ? `&tn=${message}` : ''}`;
+    
+    try {
+      new QRCode(qrcodeContainer, {
+        text: upiURL,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+      
+      qrcodeContainer.classList.add('show');
+      speak("QR code generation is successful");
+    } catch(error) {
+      console.error("QR Code generation failed:", error);
+      speak("Failed to generate QR Code. Please try again.");
+    }
+  }
+</script>
